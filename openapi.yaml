@@ -1,0 +1,982 @@
+openapi: 3.0.3
+info:
+  title: GC PAL AI API
+  version: 1.0.0
+  description: >
+    GC PAL AI (Global Commerce Pal) — global shopping, gifting, events and group
+    ticket platform API. Search one product worldwide, get country-wise prices with
+    live FX conversion, AI-powered deal comparison, send gifts anywhere with PayPal
+    checkout, track deliveries, review smart transaction insights and book group
+    tickets with CrowdTicket AI. Import this spec into APIMatic to generate SDKs in
+    10+ languages.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+tags:
+  - name: Catalog
+  - name: Search & Compare
+  - name: Currency
+  - name: Gifts
+  - name: Events
+  - name: Transactions
+  - name: PayPal
+  - name: CrowdTicket AI
+paths:
+  /api/products:
+    get:
+      tags: [Catalog]
+      summary: List all products
+      responses:
+        "200":
+          description: Product catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+  /api/search:
+    get:
+      tags: [Search & Compare]
+      summary: Global product search
+      description: Search products by name, brand, category or tag and get the best offer for each product shipped to the destination country.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+          description: Search query. Empty returns featured products.
+        - name: country
+          in: query
+          required: false
+          schema: { type: string, default: US }
+          description: Destination country code (ISO 3166-1 alpha-2).
+      responses:
+        "200":
+          description: Search results with best per-product offers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+  /api/compare:
+    get:
+      tags: [Search & Compare]
+      summary: AI deal comparison
+      description: Compares one product across all origin countries with discounts, shipping, customs-relevant totals and an AI-generated summary and tips.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: country
+          in: query
+          required: false
+          schema: { type: string, default: US }
+      responses:
+        "200":
+          description: Comparison result with AI summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompareResult"
+        "400":
+          description: Missing query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No products found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/currency:
+    get:
+      tags: [Currency]
+      summary: Live exchange rates
+      parameters:
+        - name: base
+          in: query
+          required: false
+          schema: { type: string, default: USD }
+      responses:
+        "200":
+          description: Exchange rates for the base currency
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  base: { type: string }
+                  rates:
+                    type: object
+                    additionalProperties: { type: number }
+  /api/gifts:
+    get:
+      tags: [Gifts]
+      summary: List all gifts
+      responses:
+        "200":
+          description: Gifts sorted by creation date (newest first)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gifts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Gift"
+    post:
+      tags: [Gifts]
+      summary: Create a gift
+      description: Creates a gift, picks the best global offer for the destination country (or a preferred origin) and returns the gift awaiting payment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGiftRequest"
+      responses:
+        "201":
+          description: Created gift
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gift:
+                    $ref: "#/components/schemas/Gift"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/gifts/{id}:
+    get:
+      tags: [Gifts]
+      summary: Get a gift by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Gift
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gift:
+                    $ref: "#/components/schemas/Gift"
+        "404":
+          description: Gift not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Gifts]
+      summary: Cancel a gift
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Cancelled gift
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gift:
+                    $ref: "#/components/schemas/Gift"
+        "404":
+          description: Gift not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/gifts/{id}/tracking:
+    post:
+      tags: [Gifts]
+      summary: Advance gift tracking
+      description: Moves the gift one step forward in the shipment flow (demo control for carriers/webhooks).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated gift
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gift:
+                    $ref: "#/components/schemas/Gift"
+        "400":
+          description: Gift not paid or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Gift not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/gifts/{id}/simulate-payment:
+    post:
+      tags: [Gifts]
+      summary: Simulate payment (demo)
+      description: Marks the gift as paid without PayPal. Useful when sandbox credentials are not configured.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Paid gift and created transaction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gift:
+                    $ref: "#/components/schemas/Gift"
+                  transaction:
+                    $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Gift already paid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/events:
+    get:
+      tags: [Events]
+      summary: List events
+      responses:
+        "200":
+          description: Events sorted by date
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EventItem"
+    post:
+      tags: [Events]
+      summary: Create an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Created event
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/EventItem"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/transactions:
+    get:
+      tags: [Transactions]
+      summary: Smart transaction history
+      description: Returns all gift transactions with worldwide spending insights and PayPal sandbox activity when credentials are configured.
+      responses:
+        "200":
+          description: Transactions and insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionsResponse"
+  /api/paypal/config:
+    get:
+      tags: [PayPal]
+      summary: PayPal client configuration
+      responses:
+        "200":
+          description: Client id and mode for the PayPal JS SDK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayPalConfig"
+  /api/paypal/create-order:
+    post:
+      tags: [PayPal]
+      summary: Create a PayPal order
+      description: Creates a sandbox/live PayPal order (intent CAPTURE) for a gift and stores the order id on the gift.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [giftId]
+              properties:
+                giftId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Order id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderId: { type: string }
+        "503":
+          description: PayPal not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/paypal/capture-order:
+    post:
+      tags: [PayPal]
+      summary: Capture a PayPal order
+      description: Captures an approved PayPal order, marks the gift as placed and records the transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId]
+              properties:
+                orderId: { type: string }
+                giftId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Capture result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  status: { type: string }
+                  gift:
+                    $ref: "#/components/schemas/Gift"
+        "402":
+          description: Capture not completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/tickets/discover:
+    get:
+      tags: [CrowdTicket AI]
+      summary: Discover group ticket offers
+      description: Discover flight, bus, train or event tickets between two cities/venues, priced with the group discount for the requested party size.
+      parameters:
+        - name: mode
+          in: query
+          required: false
+          schema: { type: string, enum: [flight, bus, train, event], default: flight }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+          description: YYYY-MM-DD or YYYY-MM-DDTHH:mm. Defaults to a mode-appropriate departure time.
+        - name: seats
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 12, default: 1 }
+      responses:
+        "200":
+          description: Discovered offers with group pricing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mode: { type: string, enum: [flight, bus, train, event] }
+                  modeLabel: { type: string }
+                  fromCity: { type: string }
+                  toCity: { type: string }
+                  departAt: { type: string, format: date-time }
+                  seats: { type: integer }
+                  offers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TicketOffer"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/crowd:
+    get:
+      tags: [CrowdTicket AI]
+      summary: List crowd groups
+      parameters:
+        - { name: mode, in: query, required: false, schema: { type: string } }
+        - { name: from, in: query, required: false, schema: { type: string } }
+        - { name: to, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: Crowd groups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CrowdGroup"
+    post:
+      tags: [CrowdTicket AI]
+      summary: Match into a crowd (two-hour window)
+      description: Joins an open group on the same mode/route whose departure is within two hours, or creates a new group. Regenerates the AI group offer for the new party size.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, mode, from, to, departAt]
+              properties:
+                name: { type: string }
+                mode: { type: string, enum: [flight, bus, train, event] }
+                from: { type: string }
+                to: { type: string }
+                departAt: { type: string, format: date-time }
+                seats: { type: integer, minimum: 1, maximum: 6, default: 1 }
+                carrier: { type: string }
+      responses:
+        "201":
+          description: New group created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/CrowdGroup"
+                  matched: { type: boolean }
+        "200":
+          description: Joined an existing group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/CrowdGroup"
+                  matched: { type: boolean }
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/crowd/{id}:
+    get:
+      tags: [CrowdTicket AI]
+      summary: Get a crowd group and its booking
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Group with optional booking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/CrowdGroup"
+                  booking:
+                    nullable: true
+                    allOf:
+                      - $ref: "#/components/schemas/TicketBooking"
+        "404":
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/crowd/{id}/approve:
+    post:
+      tags: [CrowdTicket AI]
+      summary: Individual payment approval
+      description: A single traveller approves or declines their own share. When every member has approved, the group booking is confirmed automatically.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memberId, action]
+              properties:
+                memberId: { type: string }
+                action: { type: string, enum: [approve, decline] }
+      responses:
+        "200":
+          description: Updated group and optional booking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/CrowdGroup"
+                  booking:
+                    nullable: true
+                    allOf:
+                      - $ref: "#/components/schemas/TicketBooking"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group or member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/crowd/{id}/confirm:
+    post:
+      tags: [CrowdTicket AI]
+      summary: Confirm the group booking
+      description: Confirms the group booking once at least two travellers have joined, issuing group tickets and starting booking tracking.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Confirmed group and booking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/CrowdGroup"
+                  booking:
+                    $ref: "#/components/schemas/TicketBooking"
+        "400":
+          description: Cannot confirm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/bookings:
+    get:
+      tags: [CrowdTicket AI]
+      summary: List ticket bookings
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TicketBooking"
+  /api/bookings/{id}:
+    get:
+      tags: [CrowdTicket AI]
+      summary: Get a ticket booking
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Booking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking:
+                    $ref: "#/components/schemas/TicketBooking"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/bookings/{id}/tracking:
+    post:
+      tags: [CrowdTicket AI]
+      summary: Advance booking tracking
+      description: Advances the booking through its mode-specific tracking flow (confirmed → ticketed → … → arrived).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking:
+                    $ref: "#/components/schemas/TicketBooking"
+        "400":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    Country:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        currency: { type: string }
+        flag: { type: string }
+        region: { type: string }
+    Product:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        brand: { type: string }
+        category: { type: string }
+        emoji: { type: string }
+        baseUSD: { type: number }
+        rating: { type: number }
+        reviews: { type: integer }
+        tags:
+          type: array
+          items: { type: string }
+    Offer:
+      type: object
+      properties:
+        origin: { type: string }
+        originName: { type: string }
+        flag: { type: string }
+        currency: { type: string }
+        merchant: { type: string }
+        priceUSD: { type: number }
+        priceLocal: { type: number }
+        discountPct: { type: number }
+        shippingUSD: { type: number }
+        shippingDays: { type: integer }
+        totalUSD: { type: number }
+        totalDest: { type: number }
+        destCurrency: { type: string }
+        inStock: { type: boolean }
+    SearchItem:
+      type: object
+      properties:
+        product:
+          $ref: "#/components/schemas/Product"
+        offer:
+          $ref: "#/components/schemas/Offer"
+        offersCount: { type: integer }
+        worstTotalUSD: { type: number }
+        savingsUSD: { type: number }
+    SearchResponse:
+      type: object
+      properties:
+        query: { type: string }
+        destination:
+          $ref: "#/components/schemas/Country"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchItem"
+    CompareResult:
+      type: object
+      properties:
+        query: { type: string }
+        product:
+          $ref: "#/components/schemas/Product"
+        destination:
+          $ref: "#/components/schemas/Country"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/Offer"
+        best:
+          $ref: "#/components/schemas/Offer"
+        worst:
+          $ref: "#/components/schemas/Offer"
+        savingsUSD: { type: number }
+        engine: { type: string, enum: [llm, rules] }
+        summary: { type: string }
+        tips:
+          type: array
+          items: { type: string }
+    TrackingStep:
+      type: object
+      properties:
+        status: { type: string }
+        at: { type: string, format: date-time }
+        note: { type: string }
+    Gift:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        productId: { type: string }
+        productName: { type: string }
+        productEmoji: { type: string }
+        merchant: { type: string }
+        originCountry: { type: string }
+        originCountryName: { type: string }
+        recipientName: { type: string }
+        recipientCountry: { type: string }
+        recipientCountryName: { type: string }
+        address: { type: string }
+        message: { type: string }
+        eventId: { type: string, format: uuid, nullable: true }
+        eventTitle: { type: string, nullable: true }
+        quantity: { type: integer }
+        currency: { type: string }
+        amountLocal: { type: number }
+        amountUSD: { type: number }
+        status:
+          type: string
+          enum: [awaiting_payment, placed, processing, dispatched, in_transit, customs, out_for_delivery, delivered, cancelled]
+        trackingSteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackingStep"
+        etaDays: { type: integer }
+        paypalOrderId: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    CreateGiftRequest:
+      type: object
+      required: [productId, recipientName, recipientCountry, address]
+      properties:
+        productId: { type: string }
+        recipientName: { type: string }
+        recipientCountry: { type: string }
+        address: { type: string }
+        message: { type: string }
+        eventId: { type: string }
+        quantity: { type: integer, minimum: 1, maximum: 10, default: 1 }
+        origin: { type: string }
+    EventItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        type: { type: string }
+        date: { type: string, format: date }
+        country: { type: string }
+        countryName: { type: string }
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+    CreateEventRequest:
+      type: object
+      required: [title, date]
+      properties:
+        title: { type: string }
+        type: { type: string }
+        date: { type: string, format: date }
+        country: { type: string }
+        notes: { type: string }
+    Transaction:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        giftId: { type: string, format: uuid, nullable: true }
+        type: { type: string, enum: [gift] }
+        description: { type: string }
+        amountUSD: { type: number }
+        currency: { type: string }
+        amountLocal: { type: number }
+        destinationCountry: { type: string }
+        status: { type: string, enum: [completed, pending, refunded] }
+        paypalOrderId: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    TransactionsResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        paypal:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              status: { type: string }
+              amountUSD: { type: number, nullable: true }
+              time: { type: string }
+        insights:
+          type: object
+          properties:
+            total: { type: number }
+            count: { type: integer }
+            countries: { type: integer }
+            avg: { type: number }
+            topCountry: { type: string, nullable: true }
+            smartLine: { type: string }
+            byCountry:
+              type: array
+              items:
+                type: object
+                properties:
+                  country: { type: string }
+                  countryName: { type: string }
+                  total: { type: number }
+                  count: { type: integer }
+            monthly:
+              type: array
+              items:
+                type: object
+                properties:
+                  month: { type: string }
+                  total: { type: number }
+    PayPalConfig:
+      type: object
+      properties:
+        configured: { type: boolean }
+        clientId: { type: string, nullable: true }
+        currency: { type: string }
+        mode: { type: string, enum: [sandbox, live] }
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+    TicketOffer:
+      type: object
+      properties:
+        id: { type: string }
+        mode: { type: string, enum: [flight, bus, train, event] }
+        carrier: { type: string }
+        carrierEmoji: { type: string }
+        fromCity: { type: string }
+        toCity: { type: string }
+        departAt: { type: string, format: date-time }
+        arriveAt: { type: string, format: date-time }
+        durationMin: { type: integer }
+        soloUSD: { type: number }
+        groupSize: { type: integer }
+        groupDiscountPct: { type: integer }
+        groupPerPersonUSD: { type: number }
+        groupTotalUSD: { type: number }
+        savingsUSD: { type: number }
+        seatsLeft: { type: integer }
+        perks:
+          type: array
+          items: { type: string }
+        live: { type: boolean }
+    GroupMember:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        seats: { type: integer }
+        paymentStatus: { type: string, enum: [pending, approved, declined] }
+        joinedAt: { type: string, format: date-time }
+    CrowdGroup:
+      type: object
+      properties:
+        id: { type: string }
+        mode: { type: string, enum: [flight, bus, train, event] }
+        fromCity: { type: string }
+        toCity: { type: string }
+        departAt: { type: string, format: date-time }
+        windowStart: { type: string, format: date-time }
+        windowEnd: { type: string, format: date-time }
+        capacity: { type: integer }
+        status: { type: string, enum: [matching, pending_approvals, confirmed, cancelled] }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupMember"
+        offer:
+          $ref: "#/components/schemas/TicketOffer"
+        engine: { type: string, enum: [llm, rules] }
+        aiSummary: { type: string }
+        aiTips:
+          type: array
+          items: { type: string }
+        bookingId: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    BookingStep:
+      type: object
+      properties:
+        status: { type: string }
+        at: { type: string, format: date-time }
+        note: { type: string }
+    TicketBooking:
+      type: object
+      properties:
+        id: { type: string }
+        groupId: { type: string }
+        reference: { type: string }
+        mode: { type: string, enum: [flight, bus, train, event] }
+        carrier: { type: string }
+        carrierEmoji: { type: string }
+        fromCity: { type: string }
+        toCity: { type: string }
+        departAt: { type: string, format: date-time }
+        arriveAt: { type: string, format: date-time }
+        seats: { type: integer }
+        perPersonUSD: { type: number }
+        totalUSD: { type: number }
+        savingsUSD: { type: number }
+        status: { type: string }
+        trackingSteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookingStep"
+        createdAt: { type: string, format: date-time }

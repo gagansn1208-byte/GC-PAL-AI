@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fdf2ff;
+  --foreground: #1e1b3a;
+  --anime-pink: #ff7ac6;
+  --anime-purple: #8b5cf6;
+  --anime-blue: #38bdf8;
+  --anime-yellow: #fde047;
+  --anime-ink: #1e1b3a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-anime-pink: var(--anime-pink);
+  --color-anime-purple: var(--anime-purple);
+  --color-anime-blue: var(--anime-blue);
+  --color-anime-yellow: var(--anime-yellow);
+  --color-anime-ink: var(--anime-ink);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ---- Anime backdrop: soft sky + drifting petals ---- */
+.anime-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 40rem at 12% -10%, rgba(255, 122, 198, 0.35), transparent 60%),
+    radial-gradient(55rem 38rem at 100% 0%, rgba(56, 189, 248, 0.32), transparent 55%),
+    radial-gradient(50rem 40rem at 50% 120%, rgba(139, 92, 246, 0.28), transparent 60%),
+    linear-gradient(180deg, #fff6fd 0%, #f3f0ff 55%, #eef8ff 100%);
+}
+
+.anime-backdrop .petal {
+  position: absolute;
+  top: -8vh;
+  font-size: 1.35rem;
+  opacity: 0.75;
+  animation: petal-fall linear infinite;
+  filter: drop-shadow(0 2px 4px rgba(255, 122, 198, 0.35));
+}
+
+@keyframes petal-fall {
+  0% {
+    transform: translateY(-10vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(115vh) translateX(6vw) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* ---- Manga-panel cards ---- */
+.anime-card {
+  position: relative;
+  border: 2.5px solid var(--anime-ink);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 6px 6px 0 rgba(30, 27, 58, 0.9);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.anime-card-hover:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 9px 9px 0 rgba(30, 27, 58, 0.9);
+}
+
+.anime-panel {
+  border: 2.5px solid var(--anime-ink);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 6px 6px 0 rgba(139, 92, 246, 0.55);
+}
+
+.anime-logo-badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 2.5px solid var(--anime-ink);
+  border-radius: 0.85rem;
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #ff7ac6 0%, #8b5cf6 55%, #38bdf8 100%);
+  box-shadow: 3px 3px 0 rgba(30, 27, 58, 0.9);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.anime-logo-badge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.75) 50%, transparent 65%);
+  transform: translateX(-130%);
+  animation: badge-shine 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes badge-shine {
+  0%,
+  55% {
+    transform: translateX(-130%);
+  }
+  80%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+.anime-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.anime-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.6s ease;
+}
+
+.anime-shine:hover::after {
+  left: 120%;
+}
+
+.anime-title {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background: linear-gradient(92deg, #ff7ac6 0%, #8b5cf6 48%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.anime-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 2.5px solid var(--anime-ink);
+  border-radius: 9999px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(92deg, #ff7ac6, #8b5cf6 60%, #6366f1);
+  box-shadow: 4px 4px 0 rgba(30, 27, 58, 0.9);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+}
+
+.anime-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 rgba(30, 27, 58, 0.9);
+  filter: saturate(1.15);
+}
+
+.anime-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(30, 27, 58, 0.9);
+}
+
+.anime-btn:disabled {
+  opacity: 0.55;
+  box-shadow: 2px 2px 0 rgba(30, 27, 58, 0.5);
+  transform: none;
+}
+
+.anime-btn-ghost {
+  color: var(--anime-ink);
+  background: #fff;
+  border: 2.5px solid var(--anime-ink);
+  border-radius: 9999px;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 rgba(30, 27, 58, 0.85);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.anime-btn-ghost:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 rgba(30, 27, 58, 0.85);
+}
+
+.anime-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 2px solid var(--anime-ink);
+  border-radius: 9999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #fff;
+  color: var(--anime-ink);
+}
+
+.anime-input {
+  width: 100%;
+  border: 2.5px solid var(--anime-ink);
+  border-radius: 0.9rem;
+  background: #fff;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  color: var(--anime-ink);
+  outline: none;
+  transition: box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.anime-input:focus {
+  border-color: var(--anime-purple);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.22);
+}
+
+.anime-sparkle {
+  display: inline-block;
+  animation: sparkle 1.8s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.25) rotate(12deg);
+    opacity: 1;
+  }
+}
+
+.anime-float {
+  animation: floaty 3.4s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.anime-pop {
+  animation: pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anime-backdrop .petal,
+  .anime-sparkle,
+  .anime-float,
+  .anime-pop,
+  .anime-logo-badge::after {
+    animation: none;
+  }
+}
